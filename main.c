@@ -10,6 +10,9 @@
 
 #include "fsm.h"
 
+//-------------------------------------------------------------------------
+/* Watch object */
+
 struct watch
 {
     unsigned int hours;
@@ -17,6 +20,9 @@ struct watch
 
     struct fsm_obj *fsm;
 } watch;
+
+//-------------------------------------------------------------------------
+/* Watch states, events & handlers */
 
 enum watch_state
 {
@@ -35,52 +41,51 @@ enum watch_event
     WATCH_EVENT_MAX
 };
 
-static int enter_set_hours_state(void)
+static void on_entry_set_hours_state(void)
 {
     printf("Hours: %02u\n", watch.hours);
-    return 0;
 }
 
-static int enter_set_minutes_state(void)
+static void on_entry_minutes_state(void)
 {
     printf("Minutes: %02u\n", watch.minutes);
-    return 0;
 }
 
-static int enter_idle_state(void)
+static void on_entry_idle_state(void)
 {
     printf("Time: %02u:%02u\n", watch.hours, watch.minutes);
-    return 0;
 }
 
-static int goto_idle(void)
+static unsigned int goto_idle(void)
 {
     return WATCH_STATE_IDLE;
 }
 
-static int goto_set_hours(void)
+static unsigned int goto_set_hours(void)
 {
     return WATCH_STATE_SET_HOURS;
 }
 
-static int goto_set_minutes(void)
+static unsigned int goto_set_minutes(void)
 {
     return WATCH_STATE_SET_MINUTES;
 }
 
-static int increase_hours(void)
+static unsigned int increase_hours(void)
 {
     watch.hours = (watch.hours + 1) % 24;
     return WATCH_STATE_SET_HOURS;
 }
 
-static int increase_minutes(void)
+static unsigned int increase_minutes(void)
 {
     watch.minutes = (watch.minutes + 1) % 60;
     return WATCH_STATE_SET_MINUTES;
 }
 
-static const fsm_handler_t watch_fsm_transitions[WATCH_STATE_MAX][WATCH_EVENT_MAX] =
+//-------------------------------------------------------------------------
+
+static const fsm_event_handler_t watch_fsm_transitions[WATCH_STATE_MAX][WATCH_EVENT_MAX] =
 {
     [WATCH_STATE_IDLE] = { goto_set_hours, NULL },
     [WATCH_STATE_SET_HOURS] = { goto_set_minutes, increase_hours },
@@ -89,10 +94,12 @@ static const fsm_handler_t watch_fsm_transitions[WATCH_STATE_MAX][WATCH_EVENT_MA
 
 static const struct fsm_state_handlers watch_state_handlers[] =
 {
-    [WATCH_STATE_IDLE] = {enter_idle_state, NULL},
-    [WATCH_STATE_SET_HOURS] = {enter_set_hours_state, NULL},
-    [WATCH_STATE_SET_MINUTES] = {enter_set_minutes_state, NULL},
+    [WATCH_STATE_IDLE] = {on_entry_idle_state, NULL},
+    [WATCH_STATE_SET_HOURS] = {on_entry_set_hours_state, NULL},
+    [WATCH_STATE_SET_MINUTES] = {on_entry_minutes_state, NULL},
 };
+
+//-------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
@@ -103,7 +110,7 @@ int main(int argc, char *argv[])
     while (1)
     {
         char c = getchar();
-        int event = -1;
+        unsigned int event = WATCH_EVENT_MAX;
 
         switch (c)
         {

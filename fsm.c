@@ -14,16 +14,16 @@
 
 struct fsm_obj
 {
-    int current_state;
+    unsigned int current_state;
     unsigned int states_cnt, events_cnt;
 
-    const fsm_handler_t *transition_matrix;
+    const fsm_event_handler_t *transition_matrix;
     const struct fsm_state_handlers *state_handlers_array;
 };
 
 //-----------------------------------------------------------------------------
 
-struct fsm_obj *fsm_init(unsigned int states_cnt, unsigned int events_cnt, int initial_state, const fsm_handler_t transision_matrix[states_cnt][events_cnt], const struct fsm_state_handlers state_handlers_array[states_cnt])
+struct fsm_obj *fsm_init(unsigned int states_cnt, unsigned int events_cnt, unsigned int initial_state, const fsm_event_handler_t transision_matrix[states_cnt][events_cnt], const struct fsm_state_handlers state_handlers_array[states_cnt])
 {
     if (transision_matrix == NULL)
         return NULL;
@@ -57,22 +57,22 @@ void fsm_deinit(struct fsm_obj *const obj)
 
 //-----------------------------------------------------------------------------
 
-void fsm_process(struct fsm_obj *const obj, int event)
+void fsm_process(struct fsm_obj *const obj, unsigned int event)
 {
     if (obj == NULL)
         return;
 
-    if (obj->current_state > obj->states_cnt || event > obj->events_cnt)
+    if (obj->current_state >= obj->states_cnt || event >= obj->events_cnt)
         return;
 
-    fsm_handler_t event_handler = obj->transition_matrix[obj->current_state * obj->events_cnt + event];
+    fsm_event_handler_t on_event = obj->transition_matrix[obj->current_state * obj->events_cnt + event];
 
-    if (event_handler != NULL)
+    if (on_event != NULL)
     {
         if (obj->state_handlers_array[obj->current_state].on_exit != NULL)
             obj->state_handlers_array[obj->current_state].on_exit();
 
-        obj->current_state = event_handler();
+        obj->current_state = on_event();
 
         if (obj->state_handlers_array[obj->current_state].on_entry != NULL)
             obj->state_handlers_array[obj->current_state].on_entry();
