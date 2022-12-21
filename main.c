@@ -11,12 +11,13 @@
 #include "fsm.h"
 
 //-------------------------------------------------------------------------
-/* Watch object */
+/* Watch (clock) object */
 
 struct watch
 {
     unsigned int hours;
     unsigned int minutes;
+    unsigned int seconds;
 
     struct fsm_obj *fsm;
 } watch;
@@ -37,6 +38,7 @@ enum watch_event
 {
     WATCH_EVENT_SET = 0,
     WATCH_EVENT_INC,
+    WATCH_EVENT_1S_TICK,
 
     WATCH_EVENT_MAX
 };
@@ -53,43 +55,65 @@ static void on_entry_minutes_state(void)
 
 static void on_entry_idle_state(void)
 {
-    printf("Time: %02u:%02u\n", watch.hours, watch.minutes);
+    printf("Time: %02u:%02u:%02u\n", watch.hours, watch.minutes, watch.seconds);
 }
 
-static unsigned int goto_idle(void)
+static void set_minutes_state_set_evt_h(void)
 {
-    return WATCH_STATE_IDLE;
+
 }
 
-static unsigned int goto_set_hours(void)
+static void idle_state_set_evt_h(void)
 {
-    return WATCH_STATE_SET_HOURS;
+
 }
 
-static unsigned int goto_set_minutes(void)
+static void idle_state_tick_evt_h(void)
 {
-    return WATCH_STATE_SET_MINUTES;
+    unsigned int m = watch.minutes;
+    unsigned int h = watch.hours;
+
+    if (watch.seconds == 59)
+    {
+        m = (watch.minutes + 1) % 60;
+
+        if (watch.minutes == 59)
+        {
+            h = (watch.hours + 1) % 24;
+        }
+    }
+
+    watch.seconds = (watch.seconds + 1) % 60;
+    watch.minutes = m;
+    watch.hours = h;
+
+    printf("Time: %02u:%02u:%02u\n", watch.hours, watch.minutes, watch.seconds);
 }
 
-static unsigned int increase_hours(void)
+static void set_hours_state_set_evt_h(void)
+{
+
+}
+
+static void set_hours_state_inc_evt_h(void)
 {
     watch.hours = (watch.hours + 1) % 24;
-    return WATCH_STATE_SET_HOURS;
+    printf("Hours: %02u\n", watch.hours);
 }
 
-static unsigned int increase_minutes(void)
+static void set_minutes_state_inc_evt_h(void)
 {
     watch.minutes = (watch.minutes + 1) % 60;
-    return WATCH_STATE_SET_MINUTES;
+    printf("Minutes: %02u\n", watch.minutes);
 }
 
 //-------------------------------------------------------------------------
 
-static const fsm_event_handler_t watch_fsm_transitions[WATCH_STATE_MAX][WATCH_EVENT_MAX] =
+static const struct fsm_event watch_fsm_transitions[WATCH_STATE_MAX][WATCH_EVENT_MAX] =
 {
-    [WATCH_STATE_IDLE] = { goto_set_hours, NULL },
-    [WATCH_STATE_SET_HOURS] = { goto_set_minutes, increase_hours },
-    [WATCH_STATE_SET_MINUTES] = { goto_idle, increase_minutes },
+    [WATCH_STATE_IDLE] = { {WATCH_STATE_SET_HOURS, idle_state_set_evt_h}, {WATCH_STATE_IDLE, NULL}, {WATCH_STATE_IDLE, idle_state_tick_evt_h} },
+    [WATCH_STATE_SET_HOURS] = { {WATCH_STATE_SET_MINUTES, set_hours_state_set_evt_h}, {WATCH_STATE_SET_HOURS, set_hours_state_inc_evt_h}, {WATCH_STATE_SET_HOURS, NULL} },
+    [WATCH_STATE_SET_MINUTES] = { {WATCH_STATE_IDLE, set_minutes_state_set_evt_h}, {WATCH_STATE_SET_MINUTES, set_minutes_state_inc_evt_h}, {WATCH_STATE_SET_MINUTES,NULL} },
 };
 
 static const struct fsm_state_handlers watch_state_handlers[] =
@@ -119,6 +143,9 @@ int main(int argc, char *argv[])
                 break;
             case 'i':
                 event = WATCH_EVENT_INC;
+                break;
+            case 't':
+                event = WATCH_EVENT_1S_TICK;
                 break;
             case 'e':
                 return 0;
