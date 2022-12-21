@@ -17,14 +17,14 @@ struct fsm_obj
     unsigned int current_state;
     unsigned int states_cnt, events_cnt;
 
-    const struct fsm_event *transition_matrix;
+    const fsm_event_handler_t *transition_matrix;
     const struct fsm_state_handlers *state_handlers_array;
 };
 
 //-----------------------------------------------------------------------------
 
 struct fsm_obj *fsm_init(unsigned int states_cnt, unsigned int events_cnt, unsigned int initial_state,
-                         const struct fsm_event transision_matrix[states_cnt][events_cnt],
+                         const const fsm_event_handler_t transision_matrix[states_cnt][events_cnt],
                          const struct fsm_state_handlers state_handlers_array[states_cnt])
 {
     if (transision_matrix == NULL)
@@ -67,20 +67,23 @@ void fsm_process(struct fsm_obj *const obj, unsigned int event)
     if (obj->current_state >= obj->states_cnt || event >= obj->events_cnt)
         return;
 
-    fsm_event_handler_t on_event = obj->transition_matrix[obj->current_state * obj->events_cnt + event].on_event;
-    unsigned int next_state = obj->transition_matrix[obj->current_state * obj->events_cnt + event].next_state;
-    unsigned int state_changed = obj->current_state != next_state;
+    fsm_event_handler_t on_event = obj->transition_matrix[obj->current_state * obj->events_cnt + event];
 
-    if (state_changed && obj->state_handlers_array[obj->current_state].on_exit != NULL)
-        obj->state_handlers_array[obj->current_state].on_exit();
+    if (on_event == NULL)
+        return;
 
-    if (on_event != NULL)
-        on_event();
+    unsigned int prev_state = obj->current_state;
+    obj->current_state = on_event();
+    unsigned int transistion_occured = obj->current_state != prev_state;
 
-    obj->current_state = next_state;
+    if (transistion_occured)
+    {
+        if (obj->state_handlers_array[prev_state].on_exit != NULL)
+            obj->state_handlers_array[prev_state].on_exit();
 
-    if (state_changed && obj->state_handlers_array[obj->current_state].on_entry != NULL)
-        obj->state_handlers_array[obj->current_state].on_entry();
+        if (obj->state_handlers_array[obj->current_state].on_entry != NULL)
+            obj->state_handlers_array[obj->current_state].on_entry();
+    }
 }
 
 //-----------------------------------------------------------------------------
