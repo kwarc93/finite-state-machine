@@ -67,13 +67,11 @@ void fsm_process(struct fsm_obj *const obj, unsigned int event)
     if (obj->current_state >= obj->states_cnt || event >= obj->events_cnt)
         return;
 
-    fsm_event_handler_t on_event = obj->transition_matrix[obj->current_state * obj->events_cnt + event];
-
-    if (on_event == NULL)
-        return;
-
     unsigned int prev_state = obj->current_state;
-    obj->current_state = on_event();
+
+    if (obj->transition_matrix[obj->current_state * obj->events_cnt + event] != NULL)
+        obj->current_state = obj->transition_matrix[obj->current_state * obj->events_cnt + event]();
+
     unsigned int transistion_occured = obj->current_state != prev_state;
 
     if (transistion_occured)
